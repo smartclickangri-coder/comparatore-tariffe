@@ -6,31 +6,35 @@ import pypdf
 # Configurazione della pagina web
 st.set_page_config(page_title="Comparatore Bollette AI", layout="wide")
 st.title("📊 Comparatore Bollette Automatico con AI")
-st.write("Carica il PDF della bolletta: l'AI estrarrà i consumi e calcolerà la spesa con i tuoi gestori predefiniti.")
+st.write("Carica il PDF della bolletta: l'AI estrarrà i consumi e calcolerà la spesa in base ai valori PUN/PSV correnti.")
 
 # Configurazione Chiave API di Gemini
 GEMINI_API_KEY = "AQ.Ab8RN6LVlwDycplVBQb2sjK7QgCXBulvVDdqC1Zz8urQDlA6Hw" 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Valori di mercato stimati per le offerte indicizzate
-PUN_RIFERIMENTO = 0.125  # Valore stimato PUN (€/kWh)
-PSV_RIFERIMENTO = 0.420  # Valore stimato PSV (€/Smc)
+# 1. INSERIMENTO VALORI DI MERCATO CORRENTI
+st.header("1. Inserisci i valori di mercato del mese (Indici di Riferimento)")
+col_pun, col_psv = st.columns(2)
+with col_pun:
+    pun_corrente = st.number_input("Inserisci il valore PUN del mese (€/kWh)", min_value=0.0000, value=0.1250, format="%.4f", step=0.005)
+with col_psv:
+    psv_corrente = st.number_input("Inserisci il valore PSV del mese (€/Smc)", min_value=0.0000, value=0.4200, format="%.4f", step=0.010)
 
-# DATABASE DEI GESTORI PREDEFINITI (Dalla tua tabella)
+# DATABASE DEI GESTORI PREDEFINITI CORRETTO
 if "gestori" not in st.session_state:
     st.session_state.gestori = [
-        {"nome": "Windtre", "tipo": "Indicizzata", "fissa_mese": 7.5, "luce": "PUN + 0.0139", "gas": "PSV + 0.483", "luce_fisso": 0.0, "gas_fisso": 0.0},
-        {"nome": "Fastweb", "tipo": "Mista/Fissa", "fissa_mese": 12.0, "luce": "Fisso", "gas": "PSV + 0.120", "luce_fisso": 0.119, "gas_fisso": 0.0},
-        {"nome": "TIM Energia", "tipo": "Mista/Fissa", "fissa_mese": 11.5, "luce": "Fisso", "gas": "PSV + 0.120", "luce_fisso": 0.1965, "gas_fisso": 0.0},
-        {"nome": "Segno Verde", "tipo": "Fissa", "fissa_mese": 12.0, "luce": "Fisso", "gas": "Fisso", "luce_fisso": 0.1466, "gas_fisso": 0.555},
-        {"nome": "Duferco", "tipo": "Indicizzata", "fissa_mese": 15.0, "luce": "PUN + 0.0000", "gas": "PSV + 0.000", "luce_fisso": 0.0, "gas_fisso": 0.0},
-        {"nome": "Eni Plenitude", "tipo": "Fissa", "fissa_mese": 12.0, "luce": "Fisso", "gas": "Fisso", "luce_fisso": 0.1351, "gas_fisso": 0.5655},
-        {"nome": "Enel Energia", "tipo": "Fissa", "fissa_mese": 12.0, "luce": "Fisso", "gas": "Fisso", "luce_fisso": 0.179, "gas_fisso": 0.690},
-        {"nome": "Edison", "tipo": "Fissa", "fissa_mese": 6.66, "luce": "Fisso", "gas": "Fisso", "luce_fisso": 0.01989, "gas_fisso": 0.0899}
+        {"nome": "Windtre", "tipo": "Indicizzata", "fissa_mese": 7.5, "spread_luce": 0.0139, "spread_gas": 0.483, "luce_fisso": 0.0, "gas_fisso": 0.0},
+        {"nome": "Fastweb", "tipo": "Mista/Fissa", "fissa_mese": 12.0, "spread_luce": 0.0, "spread_gas": 0.120, "luce_fisso": 0.119, "gas_fisso": 0.0},
+        {"nome": "TIM Energia", "tipo": "Mista/Fissa", "fissa_mese": 11.5, "spread_luce": 0.0, "spread_gas": 0.120, "luce_fisso": 0.1965, "gas_fisso": 0.0},
+        {"nome": "Segno Verde", "tipo": "Fissa", "fissa_mese": 12.0, "spread_luce": 0.0, "spread_gas": 0.0, "luce_fisso": 0.1466, "gas_fisso": 0.555},
+        {"nome": "Duferco", "tipo": "Indicizzata", "fissa_mese": 15.0, "spread_luce": 0.0000, "spread_gas": 0.000, "luce_fisso": 0.0, "gas_fisso": 0.0},
+        {"nome": "Eni Plenitude", "tipo": "Fissa", "fissa_mese": 12.0, "spread_luce": 0.0, "spread_gas": 0.0, "luce_fisso": 0.1351, "gas_fisso": 0.5655},
+        {"nome": "Enel Energia", "tipo": "Fissa", "fissa_mese": 12.0, "spread_luce": 0.0, "spread_gas": 0.0, "luce_fisso": 0.179, "gas_fisso": 0.690},
+        {"nome": "Edison", "tipo": "Fissa", "fissa_mese": 6.66, "spread_luce": 0.0, "spread_gas": 0.0, "luce_fisso": 0.1989, "gas_fisso": 0.0899}  # Corretto qui 0.1989
     ]
 
 # Sezione Caricamento File
-st.header("1. Carica la Bolletta (PDF)")
+st.header("2. Carica la Bolletta (PDF)")
 file_caricato = st.file_uploader("Trascina o seleziona il PDF della bolletta attuale", type=["pdf"])
 
 if file_caricato is not None:
@@ -63,59 +67,59 @@ if file_caricato is not None:
             dati_estratti = json.loads(dati_puliti)
             
             tipo = dati_estratti.get("tipo_fornitura", "Luce")
-            consumo = dati_estratti.get("consumo_totale", 0.0)
-            mesi = dati_estratti.get("mesi_periodo", 2)
-            spesa = dati_estratti.get("spesa_totale", 0.0)
-            unita = "kWh" if tipo == "Luce" else "Smc"
+            consumo = float(dati_estratti.get("consumo_totale", 0.0)) if dati_estratti.get("consumo_totale") else 0.0
+            mesi = int(dati_estratti.get("mesi_periodo", 2)) if dati_estratti.get("mesi_periodo") else 2
+            spesa = float(dati_estratti.get("spesa_totale", 0.0)) if dati_estratti.get("spesa_totale") else 0.0
+            unita = "kWh" if "Luce" in tipo else "Smc"
             
             # Visualizzazione Dati Rilevati
             st.success("✨ Dati estratti con successo dalla bolletta!")
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("Tipo Fornitura", tipo)
-            col2.metric(f"Consumo Estratto", f"{consumo} {unita}")
+            col2.metric("Consumo Estratto", f"{consumo} {unita}")
             col3.metric("Mesi Fatturati", mesi)
             col4.metric("Spesa Attuale", f"{spesa} €")
             
-            # 2. CALCOLO AUTOMATICO DEL CONFRONTO
-            st.header("2. Classifica della Spesa Stimata con i tuoi Gestori")
-            st.write(f"I calcoli includono la quota di commercializzazione fissa e la spesa variabile (PUN stimato a {PUN_RIFERIMENTO}€ e PSV stimato a {PSV_RIFERIMENTO}€ per le tariffe indicizzate).")
+            # 3. CALCOLO AUTOMATICO DEL CONFRONTO
+            st.header("3. Classifica della Spesa Stimata con i tuoi Gestori")
             
             risultati = []
             
             for g in st.session_state.gestori:
-                # 1. Calcolo quota fissa per i mesi della bolletta
+                # Calcolo quota fissa per i mesi della bolletta
                 costo_fissato = g["fissa_mese"] * mesi
                 
-                # 2. Calcolo prezzo della materia energia in base al tipo di offerta
-                if tipo == "Luce":
-                    if "PUN" in g["luce"]:
-                        # Es: PUN + 0.0139
-                        spread = float(g["luce"].split("+")[1].strip())
-                        prezzo_finale_materia = PUN_RIFERIMENTO + spread
-                    else:
+                # Calcolo prezzo finale della materia energia sommandolo al PUN o PSV se indicizzata
+                if "Luce" in tipo:
+                    if g["luce_fisso"] > 0:
                         prezzo_finale_materia = g["luce_fisso"]
-                else:  # Gas
-                    if "PSV" in g["gas"]:
-                        # Es: PSV + 0.120
-                        spread = float(g["gas"].split("+")[1].strip())
-                        prezzo_finale_materia = PSV_RIFERIMENTO + spread
+                        formula_usata = f"{g['luce_fisso']} €/kWh (Fisso)"
                     else:
+                        prezzo_finale_materia = pun_corrente + g["spread_luce"]
+                        formula_usata = f"PUN ({pun_corrente}) + {g['spread_luce']}"
+                else:  # Gas
+                    if g["gas_fisso"] > 0:
                         prezzo_finale_materia = g["gas_fisso"]
+                        formula_usata = f"{g['gas_fisso']} €/Smc (Fisso)"
+                    else:
+                        prezzo_finale_materia = psv_corrente + g["spread_gas"]
+                        formula_usata = f"PSV ({psv_corrente}) + {g['spread_gas']}"
                 
-                # 3. Costo Totale della Componente Materia Energia
+                # Costo Totale Componente Energia
                 costo_variabile = consumo * prezzo_finale_materia
                 totale_stimato = costo_fissato + costo_variabile
                 
                 risultati.append({
                     "Gestore": g["nome"],
                     "Tipo Tariffa": g["tipo"],
-                    "Quota Commercializzazione": f"{round(costo_fissato, 2)} €",
-                    "Costo Materia": f"{round(costo_variabile, 2)} €",
+                    "Dettaglio Prezzo Applicato": formula_usata,
+                    "Commercializzazione Fissa": f"{round(costo_fissato, 2)} €",
+                    "Costo Consumo Stimato": f"{round(costo_variabile, 2)} €",
                     "Totale Stimato (€)": round(totale_stimato, 2)
                 })
             
             # Ordina i risultati dal più economico al più caro
-            risultati_ordinati = sorted(risultati, key=lambda x: x["Totale Stimato (€)"])
+            risultati_ordinati = sorted(risultati, key=lambda x: x["Totale Estimato (€)"] if "Totale Estimato (€)" in x else x["Totale Stimato (€)"])
             st.table(risultati_ordinati)
                 
         except Exception as e:
