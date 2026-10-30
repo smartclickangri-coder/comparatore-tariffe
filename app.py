@@ -6,21 +6,23 @@ import pypdf
 # Configurazione della pagina web
 st.set_page_config(page_title="Comparatore Bollette AI", layout="wide")
 st.title("📊 Comparatore Bollette Automatico con AI")
-st.write("Carica il PDF della bolletta: l'AI estrarrà i consumi e calcolerà la spesa in base ai valori PUN/PSV correnti.")
+st.write("Carica il PDF della bolletta: l'AI estrarrà i consumi e ricalcolerà i costi in base ai valori di mercato.")
 
 # Configurazione Chiave API di Gemini
 GEMINI_API_KEY = "AQ.Ab8RN6LVlwDycplVBQb2sjK7QgCXBulvVDdqC1Zz8urQDlA6Hw" 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# 1. INSERIMENTO VALORI DI MERCATO CORRENTI
-st.header("1. Inserisci i valori di mercato del mese (Indici di Riferimento)")
+# 1. VALORI DI MERCATO REALI AGGIORNATI (Ottobre 2026)
+st.header("1. Indici di Mercato del Mese Corrente")
+st.write("I valori preimpostati riflettono le quotazioni reali correnti. Modificali se desideri fare simulazioni con mesi precedenti.")
+
 col_pun, col_psv = st.columns(2)
 with col_pun:
-    pun_corrente = st.number_input("Inserisci il valore PUN del mese (€/kWh)", min_value=0.0000, value=0.1250, format="%.4f", step=0.005)
+    pun_corrente = st.number_input("Valore PUN attuale (€/kWh)", min_value=0.0000, value=0.2740, format="%.4f", step=0.005)
 with col_psv:
-    psv_corrente = st.number_input("Inserisci il valore PSV del mese (€/Smc)", min_value=0.0000, value=0.4200, format="%.4f", step=0.010)
+    psv_corrente = st.number_input("Valore PSV attuale (€/Smc)", min_value=0.0000, value=0.4550, format="%.4f", step=0.010)
 
-# DATABASE DEI GESTORI PREDEFINITI CORRETTO
+# DATABASE DEI GESTORI PREDEFINITI CORRETTO (Edison @ 0.1989)
 if "gestori" not in st.session_state:
     st.session_state.gestori = [
         {"nome": "Windtre", "tipo": "Indicizzata", "fissa_mese": 7.5, "spread_luce": 0.0139, "spread_gas": 0.483, "luce_fisso": 0.0, "gas_fisso": 0.0},
@@ -30,7 +32,7 @@ if "gestori" not in st.session_state:
         {"nome": "Duferco", "tipo": "Indicizzata", "fissa_mese": 15.0, "spread_luce": 0.0000, "spread_gas": 0.000, "luce_fisso": 0.0, "gas_fisso": 0.0},
         {"nome": "Eni Plenitude", "tipo": "Fissa", "fissa_mese": 12.0, "spread_luce": 0.0, "spread_gas": 0.0, "luce_fisso": 0.1351, "gas_fisso": 0.5655},
         {"nome": "Enel Energia", "tipo": "Fissa", "fissa_mese": 12.0, "spread_luce": 0.0, "spread_gas": 0.0, "luce_fisso": 0.179, "gas_fisso": 0.690},
-        {"nome": "Edison", "tipo": "Fissa", "fissa_mese": 6.66, "spread_luce": 0.0, "spread_gas": 0.0, "luce_fisso": 0.1989, "gas_fisso": 0.0899}  # Corretto qui 0.1989
+        {"nome": "Edison", "tipo": "Fissa", "fissa_mese": 6.66, "spread_luce": 0.0, "spread_gas": 0.0, "luce_fisso": 0.1989, "gas_fisso": 0.0899}
     ]
 
 # Sezione Caricamento File
@@ -38,7 +40,7 @@ st.header("2. Carica la Bolletta (PDF)")
 file_caricato = st.file_uploader("Trascina o seleziona il PDF della bolletta attuale", type=["pdf"])
 
 if file_caricato is not None:
-    with st.spinner("🤖 L'intelligenza artificiale sta analizzando il documento..."):
+    with st.spinner("🤖 L'intelligenza artificiale sta estraendo i consumi..."):
         try:
             # Estrazione testo dal PDF
             lettore_pdf = pypdf.PdfReader(file_caricato)
@@ -86,10 +88,9 @@ if file_caricato is not None:
             risultati = []
             
             for g in st.session_state.gestori:
-                # Calcolo quota fissa per i mesi della bolletta
                 costo_fissato = g["fissa_mese"] * mesi
                 
-                # Calcolo prezzo finale della materia energia sommandolo al PUN o PSV se indicizzata
+                # Calcolo basato sul tipo di fornitura rilevato
                 if "Luce" in tipo:
                     if g["luce_fisso"] > 0:
                         prezzo_finale_materia = g["luce_fisso"]
@@ -105,7 +106,6 @@ if file_caricato is not None:
                         prezzo_finale_materia = psv_corrente + g["spread_gas"]
                         formula_usata = f"PSV ({psv_corrente}) + {g['spread_gas']}"
                 
-                # Costo Totale Componente Energia
                 costo_variabile = consumo * prezzo_finale_materia
                 totale_stimato = costo_fissato + costo_variabile
                 
@@ -118,8 +118,7 @@ if file_caricato is not None:
                     "Totale Stimato (€)": round(totale_stimato, 2)
                 })
             
-            # Ordina i risultati dal più economico al più caro
-            risultati_ordinati = sorted(risultati, key=lambda x: x["Totale Estimato (€)"] if "Totale Estimato (€)" in x else x["Totale Stimato (€)"])
+            risultati_ordinati = sorted(risultati, key=lambda x: x["Totale Stimato (€)"])
             st.table(risultati_ordinati)
                 
         except Exception as e:
