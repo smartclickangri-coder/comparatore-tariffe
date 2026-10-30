@@ -4,19 +4,29 @@ import json
 import pypdf
 
 # Configurazione della pagina web
-st.set_page_config(page_title="Comparatore Bollette AI", layout="centered")
+st.set_page_config(page_title="Comparatore Bollette AI", layout="wide")
 st.title("📊 Comparatore Bollette Automatico con AI")
-st.write("Carica il PDF della bolletta: l'intelligenza artificiale estrarrà i dati ed eseguirà il calcolo.")
+st.write("Carica il PDF della bolletta: l'AI estrarrà i consumi e calcolerà la spesa con i tuoi gestori predefiniti.")
 
-# Configurazione Chiave API di Gemini fornita dall'utente
+# Configurazione Chiave API di Gemini
 GEMINI_API_KEY = "AQ.Ab8RN6LVlwDycplVBQb2sjK7QgCXBulvVDdqC1Zz8urQDlA6Hw" 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Configurazione iniziale dei gestori da confrontare
+# Valori di mercato stimati per le offerte indicizzate
+PUN_RIFERIMENTO = 0.125  # Valore stimato PUN (€/kWh)
+PSV_RIFERIMENTO = 0.420  # Valore stimato PSV (€/Smc)
+
+# DATABASE DEI GESTORI PREDEFINITI (Dalla tua tabella)
 if "gestori" not in st.session_state:
     st.session_state.gestori = [
-        {"nome": "Fornitore Alfa", "quota_fissa_anno": 120.0, "prezzo_materia": 0.115},
-        {"nome": "Fornitore Beta", "quota_fissa_anno": 90.0, "prezzo_materia": 0.132}
+        {"nome": "Windtre", "tipo": "Indicizzata", "fissa_mese": 7.5, "luce": "PUN + 0.0139", "gas": "PSV + 0.483", "luce_fisso": 0.0, "gas_fisso": 0.0},
+        {"nome": "Fastweb", "tipo": "Mista/Fissa", "fissa_mese": 12.0, "luce": "Fisso", "gas": "PSV + 0.120", "luce_fisso": 0.119, "gas_fisso": 0.0},
+        {"nome": "TIM Energia", "tipo": "Mista/Fissa", "fissa_mese": 11.5, "luce": "Fisso", "gas": "PSV + 0.120", "luce_fisso": 0.1965, "gas_fisso": 0.0},
+        {"nome": "Segno Verde", "tipo": "Fissa", "fissa_mese": 12.0, "luce": "Fisso", "gas": "Fisso", "luce_fisso": 0.1466, "gas_fisso": 0.555},
+        {"nome": "Duferco", "tipo": "Indicizzata", "fissa_mese": 15.0, "luce": "PUN + 0.0000", "gas": "PSV + 0.000", "luce_fisso": 0.0, "gas_fisso": 0.0},
+        {"nome": "Eni Plenitude", "tipo": "Fissa", "fissa_mese": 12.0, "luce": "Fisso", "gas": "Fisso", "luce_fisso": 0.1351, "gas_fisso": 0.5655},
+        {"nome": "Enel Energia", "tipo": "Fissa", "fissa_mese": 12.0, "luce": "Fisso", "gas": "Fisso", "luce_fisso": 0.179, "gas_fisso": 0.690},
+        {"nome": "Edison", "tipo": "Fissa", "fissa_mese": 6.66, "luce": "Fisso", "gas": "Fisso", "luce_fisso": 0.01989, "gas_fisso": 0.0899}
     ]
 
 # Sezione Caricamento File
@@ -24,7 +34,7 @@ st.header("1. Carica la Bolletta (PDF)")
 file_caricato = st.file_uploader("Trascina o seleziona il PDF della bolletta attuale", type=["pdf"])
 
 if file_caricato is not None:
-    with st.spinner("🤖 L'intelligenza artificiale sta analizzando la bolletta..."):
+    with st.spinner("🤖 L'intelligenza artificiale sta analizzando il documento..."):
         try:
             # Estrazione testo dal PDF
             lettore_pdf = pypdf.PdfReader(file_caricato)
@@ -32,7 +42,7 @@ if file_caricato is not None:
             for pagina in lettore_pdf.pages:
                 testo_bolletta += pagina.extract_text()
             
-            # Prompt ottimizzato per estrarre i dati in formato strutturato JSON
+            # Prompt ottimizzato per estrarre i dati
             prompt = f"""
             Analizza il seguente testo estratto da una bolletta energetica italiana ed estrai le seguenti informazioni in formato JSON puro, senza formattazione markdown.
             Se non trovi un valore, metti null.
@@ -46,54 +56,67 @@ if file_caricato is not None:
             {testo_bolletta}
             """
             
-            # Utilizzo del modello aggiornato Gemini 3.8 Flash
             modello = genai.GenerativeModel("gemini-3.8-flash")
             risposta = modello.generate_content(prompt)
             
-            # Pulizia e parsing del JSON ricevuto dall'AI
             dati_puliti = risposta.text.strip().replace("```json", "").replace("```", "")
             dati_estratti = json.loads(dati_puliti)
             
-            # Recupero variabili estratte
             tipo = dati_estratti.get("tipo_fornitura", "Luce")
             consumo = dati_estratti.get("consumo_totale", 0.0)
             mesi = dati_estratti.get("mesi_periodo", 2)
             spesa = dati_estratti.get("spesa_totale", 0.0)
             unita = "kWh" if tipo == "Luce" else "Smc"
             
-            # Mostra i dati rilevati all'utente per conferma
-            st.success("✨ Dati estratti con successo!")
-            col1, col2, col3 = st.columns(3)
+            # Visualizzazione Dati Rilevati
+            st.success("✨ Dati estratti con successo dalla bolletta!")
+            col1, col2, col3, col4 = st.columns(4)
             col1.metric("Tipo Fornitura", tipo)
-            col2.metric(f"Consumo Rilevato ({unita})", f"{consumo} {unita}")
-            col3.metric("Mesi Periodo", mesi)
-            st.info(f"Spesa attuale registrata nel PDF: **{spesa} €**")
+            col2.metric(f"Consumo Estratto", f"{consumo} {unita}")
+            col3.metric("Mesi Fatturati", mesi)
+            col4.metric("Spesa Attuale", f"{spesa} €")
             
             # 2. CALCOLO AUTOMATICO DEL CONFRONTO
-            st.header("2. Risultati del Confronto Automatico")
-            st.write("Ecco quanto pagheresti nel medesimo periodo con i gestori da te indicati:")
+            st.header("2. Classifica della Spesa Stimata con i tuoi Gestori")
+            st.write(f"I calcoli includono la quota di commercializzazione fissa e la spesa variabile (PUN stimato a {PUN_RIFERIMENTO}€ e PSV stimato a {PSV_RIFERIMENTO}€ per le tariffe indicizzate).")
+            
+            risultati = []
             
             for g in st.session_state.gestori:
-                # Calcolo quota fissa proporzionata ai mesi rilevati dal PDF
-                fissa_periodo = (g["quota_fissa_anno"] / 12) * mesi
-                # Calcolo quota variabile in base ai consumi del PDF
-                variabile_periodo = consumo * g["prezzo_materia"]
-                costo_materia_stimato = fissa_periodo + variabile_periodo
+                # 1. Calcolo quota fissa per i mesi della bolletta
+                costo_fissato = g["fissa_mese"] * mesi
                 
-                st.subheader(f"🔹 {g['nome']}")
-                st.write(f"Costo stimato della sola Componente Energia nel periodo: **{round(costo_materia_stimato, 2)} €**")
+                # 2. Calcolo prezzo della materia energia in base al tipo di offerta
+                if tipo == "Luce":
+                    if "PUN" in g["luce"]:
+                        # Es: PUN + 0.0139
+                        spread = float(g["luce"].split("+")[1].strip())
+                        prezzo_finale_materia = PUN_RIFERIMENTO + spread
+                    else:
+                        prezzo_finale_materia = g["luce_fisso"]
+                else:  # Gas
+                    if "PSV" in g["gas"]:
+                        # Es: PSV + 0.120
+                        spread = float(g["gas"].split("+")[1].strip())
+                        prezzo_finale_materia = PSV_RIFERIMENTO + spread
+                    else:
+                        prezzo_finale_materia = g["gas_fisso"]
+                
+                # 3. Costo Totale della Componente Materia Energia
+                costo_variabile = consumo * prezzo_finale_materia
+                totale_stimato = costo_fissato + costo_variabile
+                
+                risultati.append({
+                    "Gestore": g["nome"],
+                    "Tipo Tariffa": g["tipo"],
+                    "Quota Commercializzazione": f"{round(costo_fissato, 2)} €",
+                    "Costo Materia": f"{round(costo_variabile, 2)} €",
+                    "Totale Stimato (€)": round(totale_stimato, 2)
+                })
+            
+            # Ordina i risultati dal più economico al più caro
+            risultati_ordinati = sorted(risultati, key=lambda x: x["Totale Stimato (€)"])
+            st.table(risultati_ordinati)
                 
         except Exception as e:
-            st.error(f"Si è verificato un errore nell'elaborazione del PDF: {e}")
-
-# Spazio di gestione per aggiungere manualmente altri gestori nel database locale
-with st.sidebar:
-    st.header("⚙️ Gestione Tariffe")
-    with st.expander("Aggiungi Nuovo Gestore"):
-        nuovo_nome = st.text_input("Nome Gestore")
-        fissa_anno = st.number_input("Quota Fissa Annuale (€/anno)", value=120.0)
-        prezzo_mat = st.number_input("Prezzo Energia (€/unità)", value=0.125, format="%.3f")
-        if st.button("Aggiungi"):
-            if nuovo_nome:
-                st.session_state.gestori.append({"nome": nuovo_nome, "quota_fissa_anno": fissa_anno, "prezzo_materia": precio_mat})
-                st.success(f"{nuovo_nome} aggiunto!")
+            st.error(f"Errore di lettura o elaborazione: {e}")
