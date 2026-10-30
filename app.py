@@ -52,7 +52,7 @@ with col_cf3:
     consumo_f3 = st.number_input("Consumo in Fascia F3 (kWh)", value=62.0, step=5.0)
 
 consumo_totale = consumo_f1 + consumo_f2 + consumo_f3
-st.info(f"📊 Consumo Totale inserito: **{consumo_totale} kWh**")
+st.info(f"📊 Consumo Totale inserito: {consumo_totale} kWh")
 
 col_p1, col_p2, col_p3 = st.columns(3)
 with col_p1:
@@ -214,11 +214,12 @@ elementi.append(Paragraph("SINTESI DELLE VOCI DI SPESA IN BOLLETTA", stile_sezio
 voci_tabella = [
 [Paragraph("Dettaglio Voci di Spesa", stile_testo_bianco), Paragraph("Importo (€)", ParagraphStyle('TB', parent=stili['Normal'], alignment=2, textColor=colors.white))]
 ]
+# Inserimento sequenziale pulito senza costrutti condizionali annidati nel foglio
 voci_tabella.append([Paragraph("Spesa per la Materia Energia (Quota Fissa + Consumo + Dispacciamento)", stile_testo), Paragraph(f"{round(dati_pdf['materia'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
 voci_tabella.append([Paragraph("Spesa per il Trasporto dell'Energia e Gestione Contatore", stile_testo), Paragraph(f"{round(dati_pdf['fisse'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
 voci_tabella.append([Paragraph("Spesa per Oneri di Sistema (Regolati ARERA)", stile_testo), Paragraph(f"{round(dati_pdf['oneri_rete'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
 voci_tabella.append([Paragraph("Imposte ed Erario (Accisa sui Consumi + IVA 10%)", stile_testo), Paragraph(f"{round(dati_pdf['tasse'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
-if is_residente:
+if dati_pdf['canone'] > 0:
 voci_tabella.append([Paragraph("Canone di Abbonamento TV (Rai)", stile_testo), Paragraph(f"{round(dati_pdf['canone'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
 if dati_pdf['bonus'] > 0:
 voci_tabella.append([Paragraph("Agevolazione Bonus Sociale ARERA Detratto", stile_testo), Paragraph(f"- {round(dati_pdf['bonus'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
