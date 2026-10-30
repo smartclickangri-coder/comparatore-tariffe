@@ -43,7 +43,7 @@ with st.expander("➕ Aggiungi / Modifica Gestore"):
     if st.button("Salva Gestore"):
         if nuovo_nome:
             st.session_state.gestori.append({
-                "nome": nuevo_nome,
+                "nome": nuovo_nome,
                 "quota_fissa_anno": nuova_fissa,
                 "prezzo_materia": nuovo_prezzo
             })
