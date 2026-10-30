@@ -10,7 +10,7 @@ st.set_page_config(page_title="Comparatore Bollette AI Professionale", layout="w
 st.title("📊 Calcolatore Energetico e Generatore Fac-Simile PDF")
 st.write("Inserisci i dati, confronta le tariffe e scarica il fac-simile della bolletta personalizzato per il cliente.")
 
-# 1. PARAMETRI REALI DALLA BOLLETTA (Immagine inviata)
+# 1. PARAMETRI REALI DALLA BOLLETTA
 st.header("1. Riferimenti Economici della Bolletta Sotto Esame")
 col_f1, col_f2, col_f3 = st.columns(3)
 with col_f1:
@@ -73,7 +73,7 @@ if attiva_bonus:
     )
     bonus_mensile = 11.70 if "1-2" in categoria_bonus else (14.30 if "3-4" in categoria_bonus else 16.10)
 
-# Esegui calcoli interni per renderli disponibili alla generazione PDF
+# Esegui calcoli interni
 if is_residente:
     quota_fissa_rete = (1.80 * mesi) + (1.71 * potenza * mesi)
     quota_fissa_oneri = 0.0
@@ -94,7 +94,7 @@ accise_totali = consumo_tassabile * 0.0227
 pun_medio_pesato = ((pun_f1 * consumo_f1) + (pun_f2 * consumo_f2) + (pun_f3 * consumo_f3)) / consumo_totale if consumo_totale > 0 else pun_f1
 bonus_totale_periodo = bonus_mensile * mesi
 
-# Costruzione dizionario risultati per la tabella a schermo e per il PDF
+# Costruzione dizionario risultati
 mappa_risultati = {}
 risultati_schermo = []
 
@@ -151,8 +151,8 @@ with st.sidebar:
         elementi = []
         
         stili = getSampleStyleSheet()
-        stile_titolo = ParagraphStyle('Titolo', parent=stili['Heading1'], fontSize=24, textColor=colors.HexColor('#002B49'), spaceAfter=15)
-        stile_sottotitolo = ParagraphStyle('Sub', parent=stili['Normal'], fontSize=11, textColor=colors.gray, spaceAfter=25)
+        stile_titolo = ParagraphStyle('Titolo', parent=stili['Heading1'], fontSize=20, textColor=colors.HexColor('#002B49'), spaceAfter=15)
+        stile_sottotitolo = ParagraphStyle('Sub', parent=stili['Normal'], fontSize=10, textColor=colors.gray, spaceAfter=20)
         stile_testo = ParagraphStyle('Testo', parent=stili['Normal'], fontSize=10, leading=14)
         stile_evidenziato = ParagraphStyle('Evid', parent=stili['Normal'], fontSize=14, leading=18, textColor=colors.HexColor('#D32F2F'), fontName='Helvetica-Bold')
         
@@ -176,3 +176,35 @@ with st.sidebar:
         # Tabella Voci di Spesa
         elementi.append(Paragraph("<b>DETTAGLIO ECONOMICO STIMATO DELLA BOLLETTA</b>", stili['Heading3']))
         voci_spesa = [
+["Macro Voce di Spesa", "Importo Calcolato (€)"],
+["Spesa per la Materia Energia (Energia + Dispacciamento)", f"{round(dati_pdf['materia'], 2)} €"],
+["Spesa per il Trasporto e Gestione Contatore (Quote Fisse + Potenza)", f"{round(dati_pdf['fisse'], 2)} €"],
+["Spesa per Oneri di Sistema ARERA", f"{round(dati_pdf['oneri_rete'], 2)} €"],
+["Imposte di Stato (Accisa Erariale + IVA 10%)", f"{round(dati_pdf['tasse'], 2)} €"],
+["Canone di Abbonamento RAI (Se dovuto)", f"{round(dati_pdf['canone'], 2)} €"],
+["Agevolazione Bonus Sociale Detratto", f"- {round(dati_pdf['bonus'], 2)} €"],
+[Paragraph("TOTALE SPESA MENSILE FINITA STIMATA IN BOLLETTA", stile_testo), Paragraph(f"{round(dati_pdf['totale'], 2)} €", stile_evidenziato)]
+]
+t_spesa = Table(voci_spesa, colWidths=[380, 140])
+t_spesa.setStyle(TableStyle([
+('BACKGROUND', (0,0), (1,0), colors.HexColor('#002B49')),
+('TEXTCOLOR', (0,0), (1,0), colors.white),
+('ALIGN', (1,0), (1,-1), 'RIGHT'),
+('PADDING', (0,0), (-1,-1), 10),
+('GRID', (0,0), (-1,-2), 0.5, colors.lightgrey),
+('BACKGROUND', (0,-1), (1,-1), colors.HexColor('#FFEBEE')),
+('LINEABOVE', (0,-1), (1,-1), 1.5, colors.HexColor('#D32F2F'))
+]))
+elementi.append(t_spesa)
+elementi.append(Spacer(1, 40))
+# Note Finali Legali Disclamer
+elementi.append(Paragraph("Note informative: Il presente documento costituisce un fac-simile commerciale puramente indicativo, elaborato sulla base dei dati di consumo storici inseriti. Le tariffe di rete, gli oneri e le imposte fiscali riflettono i parametri ufficiali stabiliti dall'Autorità di Regolazione ARERA.", stile_sottotitolo))
+doc.build(elementi)
+pdf_creato = buffer.getvalue()
+# Bottone di scaricamento file integrato
+st.download_button(
+label=f"📥 Scarica PDF Bolletta {gestore_scelto}",
+data=pdf_creato,
+file_name=f"Fac_Simile_Bolletta_{gestore_scelto}.pdf",
+mime="application/pdf"
+)
