@@ -1,14 +1,9 @@
 import streamlit as st
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-import io
 
-# Configurazione della pagina web
+# Configurazione della pagina web professionale
 st.set_page_config(page_title="Comparatore Bollette AI Professionale", layout="wide")
-st.title("📊 Calcolatore Energetico e Generatore Fac-Simile PDF Premium")
-st.write("Inserisci i dati, confronta le tariffe e scarica direttamente il fac-simile della bolletta in formato PDF.")
+st.title("📊 Calcolatore Energetico e Generatore Fac-Simile")
+st.write("Inserisci i dati e confronta le tariffe. In fondo trovi il Fac-Simile pronto da stampare con Ctrl+P.")
 
 # 1. PARAMETRI REALI DALLA BOLLETTA
 st.header("1. Riferimenti Economici della Bolletta Sotto Esame")
@@ -135,44 +130,41 @@ for g in st.session_state.gestori:
 st.header("3. Risultati del Confronto a Schermo")
 st.table(sorted(risultati_schermo, key=lambda x: x["TOTALE FINITO (€)"]))
 
-# 4. CENTRALE DI STAMPA EDITORIALE SENZA TABELLE A RISCHIO TAGLIO
-st.header("🖨️ Centro Stampa Fac-Simile Realistico")
-st.write("Configura i dati anagrafici e scarica direttamente la bolletta premium finita con un solo click.")
+# 4. GENERATORE DI FATTURA VISIVA DIRETTAMENTE IN APPLICAZIONE (A PROVA DI ERRORE)
+st.header("🖨️ Anteprima della Bolletta Fac-Simile da Stampare")
+st.write("Configura l'anagrafica. La bolletta sotto si aggiornerà da sola: premi **Ctrl + P** sulla tastiera per salvarla in PDF o stamparla.")
 
 col_p1, col_p2, col_p3 = st.columns(3)
 with col_p1:
-    gestore_scelto = st.selectbox("1. Scegli il Gestore per il PDF:", [g["nome"] for g in st.session_state.gestori])
+    gestore_scelto = st.selectbox("Scegli il Gestore da visualizzare:", [g["nome"] for g in st.session_state.gestori])
 with col_p2:
-    nome_cliente = st.text_input("2. Nome e Cognome Cliente", value="Cliente Simulazione")
+    nome_cliente = st.text_input("Inserisci Nome e Cognome del cliente", value="Cliente Rossi")
 with col_p3:
-    codice_pod = st.text_input("3. Codice POD Contatore", value="IT001E12345678")
+    codice_pod = st.text_input("Inserisci Codice POD", value="IT001E12345678")
 
-def genera_documento_pdf_sicuro():
-    dati_pdf = mappa_risultati[gestore_scelto]
-    colore_brand = colors.HexColor(dati_pdf["colore"])
+# Recupero dati per il rendering grafico
+dati_rendering = mappa_risultati[gestore_scelto]
+colore_primario = dati_rendering["colore"]
+colore_testo_intestazione = "#1A1A1A" if gestore_scelto == "Eni Plenitude" else "#FFFFFF"
+
+# HTML/CSS Premium che riproduce la bolletta reale senza usare moduli PDF instabili
+html_bolletta = f"""
+<div style="border: 2px solid {colore_primario}; padding: 25px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #FFFFFF; border-radius: 8px; color: #333333; max-width: 800px; margin: auto;">
     
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=45)
-    elementi = []
-    stili = getSampleStyleSheet()
+    <!-- BANNER INTESTAZIONE GESTORE -->
+    <div style="background-color: {colore_primario}; color: {colore_testo_header if 'colore_testo_header' in locals() else colore_testo_intestazione}; padding: 20px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0; font-size: 26px; font-weight: bold; letter-spacing: 1px;">{gestore_scelto.upper()} ENERGIA</h1>
+        <div style="text-align: right; font-size: 12px; line-height: 1.4;"><b>FORNITURA ELETTRETICA</b><br/>Mercato Libero Luce</div>
+    </div>
     
-    # Stili editoriali continui sicuri per la chat
-    stile_marca = ParagraphStyle('Marca', fontSize=24, fontName='Helvetica-Bold', textColor=colore_brand, spaceAfter=5)
-    stile_h1 = ParagraphStyle('H1', fontSize=14, fontName='Helvetica-Bold', textColor=colors.HexColor('#1A1A1A'), spaceBefore=15, spaceAfter=10)
-    stile_corpo = ParagraphStyle('Corpo', fontSize=10, leading=15, textColor=colors.HexColor('#333333'), spaceAfter=6)
-    stile_evidenziato = ParagraphStyle('Evid', fontSize=16, leading=20, textColor=colore_brand, fontName='Helvetica-Bold', spaceBefore=10, spaceAfter=15)
-    
-    # Intestazione e Dati Fornitura
-    elementi.append(Paragraph(f"FORNITURA ENERGIA ELETTRICA: {dati_pdf['gestore'].upper()}", stile_marca))
-    elementi.append(Paragraph("<b>Mercato Libero dell'Energia</b> - Documento di Proiezione Fac-Simile", stile_corpo))
-    elementi.append(Spacer(1, 15))
-    
-    elementi.append(Paragraph("DATI TECNICI DI FORNITURA", stile_h1))
-    elementi.append(Paragraph(f"• <b>Intestatario:</b> {nome_cliente}", stile_corpo))
-    elementi.append(Paragraph(f"• <b>Codice POD Contatore:</b> {codice_pod}", stile_corpo))
-    elementi.append(Paragraph(f"• <b>Potenza Contrattuale:</b> {potenza} kW", stile_corpo))
-    elementi.append(Paragraph(f"• <b>Tipologia Utenza:</b> Domestico " + ("Residente" if is_residente else "Non Residente"), stile_corpo))
-    elementi.append(Paragraph(f"• <b>Periodo di Fatturazione Calcolato:</b> {mesi} Mese/i", stile_corpo))
-    elementi.append(Paragraph(f"• <b>Struttura Tariffaria:</b> {dati_pdf['tipo']} (Prezzo di riferimento: {round(dati_pdf['prezzo_medio'], 4)} €/kWh)", stile_corpo))
-    
-    # Quadro Economico Continuo
+    <!-- CONTENITORE DATI A DUE COLONNE (STILE FATTURA REALE) -->
+    <div style="display: flex; gap: 20px; margin-bottom: 35px;">
+        <!-- BOX SINISTRA: IMPORTO DA PAGARE -->
+        <div style="flex: 1; background-color: #F9FAFB; border: 1.5px solid {colore_primario}; padding: 15px; border-radius: 6px; text-align: center;">
+            <div style="font-size: 11px; color: #666666; font-weight: bold; letter-spacing: 0.5px;">TOTALE SPESA FINITA IN BOLLETTA</div>
+            <div style="font-size: 32px; font-weight: bold; color: #111827; margin: 8px 0;">{round(dati_rendering['totale'], 2)} €</div>
+            <div style="font-size: 10px; color: #EF4444; font-weight: bold;">Scadenza: Nei termini contrattuali</div>
+            <div style="font-size: 9px; color: #6B7280; margin-top: 6px;">Fattura Fac-Simile Commerciale</div>
+        </div>
+        
+        <!-- BOX DESTRA: INFORMAZIONI TECNICHE -->
