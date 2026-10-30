@@ -60,7 +60,7 @@ with col_p1:
 with col_p2:
     potenza = st.number_input("Potenza impegnata contatore (kW)", value=3.0, step=0.5)
 with col_p3:
-    scelta_res = st.selectbox("Tipologia contrattuale", ["Residente", "Non Residente"])
+    scelta_res = st.selectbox("Tipologia contrattuale", ("Residente", "Non Residente"))
     is_residente = True if scelta_res == "Residente" else False
 
 st.subheader("🎁 Agevolazioni (Bonus Sociale Elettrico ARERA)")
@@ -69,7 +69,7 @@ bonus_mensile = 0.0
 if attiva_bonus:
     categoria_bonus = st.radio(
         "Seleziona la numerosità del nucleo familiare:",
-        ["Nucleo 1-2 componenti (~11,70 €/mese)", "Nucleo 3-4 componenti (~14,30 €/mese)", "Nucleo >4 componenti (~16,10 €/mese)"]
+        ("Nucleo 1-2 componenti (~11,70 €/mese)", "Nucleo 3-4 componenti (~14,30 €/mese)", "Nucleo >4 componenti (~16,10 €/mese)")
     )
     bonus_mensile = 11.70 if "1-2" in categoria_bonus else (14.30 if "3-4" in categoria_bonus else 16.10)
 
@@ -94,7 +94,7 @@ accise_totali = consumo_tassabile * 0.0227
 pun_medio_pesato = ((pun_f1 * consumo_f1) + (pun_f2 * consumo_f2) + (pun_f3 * consumo_f3)) / consumo_totale if consumo_totale > 0 else pun_f1
 bonus_totale_periodo = bonus_mensile * mesi
 
-# Costruzione mappa risultati per il PDF
+# Costruzione mappa risultati per il PDF e lo schermo
 mappa_risultati = {}
 risultati_schermo = []
 
@@ -142,15 +142,12 @@ with st.sidebar:
     
     gestore_scelto = st.selectbox("Seleziona il Gestore per il PDF:", [g["nome"] for g in st.session_state.gestori])
     
-    # Campi anagrafici opzionali per aumentare il realismo
     nome_cliente = st.text_input("Nome e Cognome Cliente (Opzionale)", value="Cliente Simulazione")
     codice_pod = st.text_input("Codice POD Contatore (Opzionale)", value="IT001E12345678")
     
     if st.button("📄 Genera PDF Premium Brandizzato"):
         dati_pdf = mappa_risultati[gestore_scelto]
         colore_brand = colors.HexColor(dati_pdf["colore"])
-        
-        # Inversione colore testo per loghi scuri/chiari
         colore_testo_header = colors.white if dati_pdf["nome"] != "Eni Plenitude" else colors.HexColor("#1A1A1A")
         
         buffer = io.BytesIO()
@@ -169,15 +166,15 @@ with st.sidebar:
         
         # --- HEADER BRANDIZZATO ---
         header_data = [[Paragraph(f" {dati_pdf['gestore'].upper()} ENERGIA", stile_brand), Paragraph("<b>FORNITURA LUCE</b><br/>Mercato Libero", ParagraphStyle('HRight', parent=stili['Normal'], alignment=2, textColor=colore_testo_header, fontSize=10))]]
-        t_header = Table(header_data, colWidths=[300, 240])
+        t_header = Table(header_data, colWidths=(380, 160))
         t_header.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,-1), colore_brand),
-('PADDING', (0,0), (-1,-1), 16),
-('VALIGN', (0,0), (-1,-1), 'MIDDLE')
-]))
+            ('PADDING', (0,0), (-1,-1), 16),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE')
+        ]))
 elementi.append(t_header)
 elementi.append(Spacer(1, 15))
-# --- BLOCCO FIRST PAGE (LAYOUT REALE A DUE COLONNE) ---
+# --- BLOCCO FIRST PAGE ---
 box_totale_data = [
 [Paragraph("IMPORTO DA PAGARE", stile_totale_lbl)],
 [Spacer(1, 4)],
@@ -185,7 +182,7 @@ box_totale_data = [
 [Spacer(1, 4)],
 [Paragraph("Scadenza: Entro i termini contrattualiFattura Fac-Simile", ParagraphStyle('Scad', parent=stili['Normal'], alignment=1, fontSize=8, textColor=colors.HexColor('#777777')))]
 ]
-t_box_totale = Table(box_totale_data, colWidths=[200])
+t_box_totale = Table(box_totale_data, colWidths=(160,))
 t_box_totale.setStyle(TableStyle([
 ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F9FBFD')),
 ('PADDING', (0,0), (-1,-1), 12),
@@ -198,14 +195,14 @@ box_dati_data = [
 [Paragraph(f"Potenza Impegnata: {potenza} kW", stile_testo)],
 [Paragraph(f"Tipologia Uso: Domestico { 'Residente' if is_residente else 'Non Residente'}", stile_testo)],
 [Paragraph(f"Periodo ed Emissione: {mesi} Mese/i di consumo - Anno 2026", stile_testo)],
-[Paragraph(f"Tariffa Applicata: {dati_pdf['tipo']} (Prezzo medio stimato: {round(dati_pdf['prezzo_medio'], 4)} €/kWh)", stile_testo)]
+[Paragraph(f"Tariffa Applicata: {dati_pdf['tipo']} (Prezzo medio: {round(dati_pdf['prezzo_medio'], 4)} €/kWh)", stile_testo)]
 ]
-t_box_dati = Table(box_dati_data, colWidths=[340])
+t_box_dati = Table(box_dati_data, colWidths=(360,))
 t_box_dati.setStyle(TableStyle([
 ('PADDING', (0,0), (-1,-1), 4),
 ('VALIGN', (0,0), (-1,-1), 'TOP')
 ]))
-t_layout_p1 = Table([[t_box_totale, t_box_dati]], colWidths=[210, 330])
+t_layout_p1 = Table([[t_box_totale, t_box_dati]], colWidths=(170, 370))
 t_layout_p1.setStyle(TableStyle([
 ('VALIGN', (0,0), (-1,-1), 'TOP'),
 ('PADDING', (0,0), (-1,-1), 0)
@@ -217,26 +214,19 @@ elementi.append(Paragraph("SINTESI DELLE VOCI DI SPESA IN BOLLETTA", stile_sezio
 voci_tabella = [
 [Paragraph("Dettaglio Voci di Spesa", stile_testo_bianco), Paragraph("Importo (€)", ParagraphStyle('TB', parent=stili['Normal'], alignment=2, textColor=colors.white))]
 ]
-elenco_voci = [
-("Spesa per la Materia Energia (Quota Fissa + Consumo + Dispacciamento)", dati_pdf['materia']),
-("Spesa per il Trasporto dell'Energia e Gestione Contatore", dati_pdf['fisse']),
-("Spesa per Oneri di Sistema (Regolati ARERA)", dati_pdf['oneri_rete']),
-("Imposte ed Erario (Accisa sui Consumi + IVA 10%)", dati_pdf['tasse']),
-]
+voci_tabella.append([Paragraph("Spesa per la Materia Energia (Quota Fissa + Consumo + Dispacciamento)", stile_testo), Paragraph(f"{round(dati_pdf['materia'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
+voci_tabella.append([Paragraph("Spesa per il Trasporto dell'Energia e Gestione Contatore", stile_testo), Paragraph(f"{round(dati_pdf['fisse'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
+voci_tabella.append([Paragraph("Spesa per Oneri di Sistema (Regolati ARERA)", stile_testo), Paragraph(f"{round(dati_pdf['oneri_rete'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
+voci_tabella.append([Paragraph("Imposte ed Erario (Accisa sui Consumi + IVA 10%)", stile_testo), Paragraph(f"{round(dati_pdf['tasse'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
 if is_residente:
-elenco_voci.append(("Canone di Abbonamento TV (Rai)", dati_pdf['canone']))
+voci_tabella.append([Paragraph("Canone di Abbonamento TV (Rai)", stile_testo), Paragraph(f"{round(dati_pdf['canone'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
 if dati_pdf['bonus'] > 0:
-elenco_voci.append(("Agevolazione Bonus Sociale ARERA Detratto", -dati_pdf['bonus']))
-for voce, valore in elenco_voci:
-voci_tabella.append([
-Paragraph(voce, stile_testo),
-Paragraph(f"{round(valore, 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))
-])
+voci_tabella.append([Paragraph("Agevolazione Bonus Sociale ARERA Detratto", stile_testo), Paragraph(f"- {round(dati_pdf['bonus'], 2)} €", ParagraphStyle('Val', parent=stili['Normal'], alignment=2, fontSize=9))])
 voci_tabella.append([
 Paragraph("TOTALE SPESA FINITA STIMATA (IVA INCLUSA)", stile_testo),
 Paragraph(f"{round(dati_pdf['totale'], 2)} €", ParagraphStyle('ValT', parent=stili['Normal'], alignment=2, fontSize=11, fontName='Helvetica-Bold', textColor=colore_brand))
 ])
-t_quadro_spese = Table(voci_tabella, colWidths=[400, 140])
+t_quadro_spese = Table(voci_tabella, colWidths=(400, 140))
 t_quadro_spese.setStyle(TableStyle([
 ('BACKGROUND', (0,0), (-1,0), colore_brand),
 ('PADDING', (0,0), (-1,-1), 8),
@@ -249,7 +239,7 @@ elementi.append(t_quadro_spese)
 elementi.append(Spacer(1, 30))
 # --- FOOTER ED INFORMATIVA LEGALE ---
 elementi.append(Paragraph("Nota del Consulente Energetico:", ParagraphStyle('NoteTit', parent=stili['Normal'], fontSize=9, fontName='Helvetica-Bold', textColor=colors.HexColor('#555555'))))
-elementi.append(Paragraph("Il presente documento costituisce una simulazione commerciale fac-simile basata sui dati di consumo forniti. I corrispettivi fissi e le tariffe di trasporto, oneri, accise e IVA sono calcolati in conformità con le delibere ufficiali emanate dall'Autorità di Regolazione ARERA vigenti per il periodo di riferimento. Nessun costo nascosto aggiunto.", ParagraphStyle('NoteCorpo', parent=stili['Normal'], fontSize=8, leading=12, textColor=colors.HexColor('#777777'))))
+elementi.append(Paragraph("Il presente documento costituisce una simulazione commerciale fac-simile basata sui dati di consumo forniti. I corrispettivi fissi e le tariffe di trasporto, oneri, accise e IVA sono calcolati in conformità con le delibere ufficiali emanate dall'Autorità di Regolazione ARERA vigenti per il periodo di riferimento.", ParagraphStyle('NoteCorpo', parent=stili['Normal'], fontSize=8, leading=12, textColor=colors.HexColor('#777777'))))
 doc.build(elementi)
 pdf_creato = buffer.getvalue()
 st.download_button(
