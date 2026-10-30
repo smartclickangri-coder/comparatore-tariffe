@@ -8,9 +8,8 @@ st.set_page_config(page_title="Comparatore Bollette AI", layout="centered")
 st.title("📊 Comparatore Bollette Automatico con AI")
 st.write("Carica il PDF della bolletta: l'intelligenza artificiale estrarrà i dati ed eseguirà il calcolo.")
 
-# Configurazione Chiave API di Gemini (Inserisci la tua chiave qui)
-# Puoi ottenerne una gratis su: https://google.com
-GEMINI_API_KEY = "LA_TUA_GEMINI_API_KEY" 
+# Configurazione Chiave API di Gemini fornita dall'utente
+GEMINI_API_KEY = "AQ.Ab8RN6LVlwDycplVBQb2sjK7QgCXBulvVDdqC1Zz8urQDlA6Hw" 
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Configurazione iniziale dei gestori da confrontare
@@ -33,7 +32,7 @@ if file_caricato is not None:
             for pagina in lettore_pdf.pages:
                 testo_bolletta += pagina.extract_text()
             
-            # Prompt per istruire Gemini a estrarre i dati in formato strutturato JSON
+            # Prompt ottimizzato per estrarre i dati in formato strutturato JSON
             prompt = f"""
             Analizza il seguente testo estratto da una bolletta energetica italiana ed estrai le seguenti informazioni in formato JSON puro, senza formattazione markdown.
             Se non trovi un valore, metti null.
@@ -47,8 +46,8 @@ if file_caricato is not None:
             {testo_bolletta}
             """
             
-            # Chiamata al modello AI
-            modello = genai.GenerativeModel("gemini-1.5-flash")
+            # Utilizzo del modello aggiornato Gemini 3.8 Flash
+            modello = genai.GenerativeModel("gemini-3.8-flash")
             risposta = modello.generate_content(prompt)
             
             # Pulizia e parsing del JSON ricevuto dall'AI
@@ -96,5 +95,5 @@ with st.sidebar:
         prezzo_mat = st.number_input("Prezzo Energia (€/unità)", value=0.125, format="%.3f")
         if st.button("Aggiungi"):
             if nuovo_nome:
-                st.session_state.gestori.append({"nome": nuovo_nome, "quota_fissa_anno": fissa_anno, "prezzo_materia": prezzo_mat})
+                st.session_state.gestori.append({"nome": nuovo_nome, "quota_fissa_anno": fissa_anno, "prezzo_materia": precio_mat})
                 st.success(f"{nuovo_nome} aggiunto!")
