@@ -8,7 +8,7 @@ import io
 # Configurazione della pagina web
 st.set_page_config(page_title="Comparatore Bollette AI Professionale", layout="wide")
 st.title("📊 Calcolatore Energetico e Generatore Fac-Simile PDF Premium")
-st.write("Inserisci i dati, confronta le tariffe e genera il fac-simile della bolletta in formato PDF.")
+st.write("Inserisci i dati, confronta le tariffe e scarica direttamente il fac-simile della bolletta in formato PDF.")
 
 # 1. PARAMETRI REALI DALLA BOLLETTA
 st.header("1. Riferimenti Economici della Bolletta Sotto Esame")
@@ -94,7 +94,7 @@ accise_totali = consumo_tassabile * 0.0227
 pun_medio_pesato = ((pun_f1 * consumo_f1) + (pun_f2 * consumo_f2) + (pun_f3 * consumo_f3)) / consumo_totale if consumo_totale > 0 else pun_f1
 bonus_totale_periodo = bonus_mensile * mesi
 
-# Costruzione mappa risultati per il PDF e lo schermo
+# Costruzione mappa risultati
 mappa_risultati = {}
 risultati_schermo = []
 
@@ -131,47 +131,48 @@ for g in st.session_state.gestori:
         "TOTALE FINITO (€)": round(totale_finito, 2)
     })
 
-# 3. TABELLA DI CONFRONTO WEB
+# 3. TABELLA DI CONFRONTO WEB (PAGINA PRINCIPALE)
 st.header("3. Risultati del Confronto a Schermo")
 st.table(sorted(risultati_schermo, key=lambda x: x["TOTALE FINITO (€)"]))
 
-# 4. PANNELLO LATERALE GENERAZIONE
-with st.sidebar:
-    st.header("🖨️ Stampa Fac-Simile Realistico")
-    st.write("Configura l'intestazione e premi Genera per sbloccare il documento stampabile.")
-    
-    gestore_scelto = st.selectbox("Seleziona il Gestore per il PDF:", [g["nome"] for g in st.session_state.gestori])
-    nome_cliente = st.text_input("Nome e Cognome Cliente (Opzionale)", value="Cliente Simulazione")
-    codice_pod = st.text_input("Codice POD Contatore (Opzionale)", value="IT001E12345678")
-    
-    # Inizializziamo lo stato del PDF se non esiste
-    if "pdf_pronto" not in st.session_state:
-        st.session_state.pdf_pronto = False
-        st.session_state.pdf_data = None
-        st.session_state.ultimo_gestore = ""
+# 4. NUOVA SEZIONE CENTRALE UNICA PER COSTRUZIONE E SCARICAMENTO IMMEDIATO PDF
+st.header("🖨️ Centro Stampa Fac-Simile Realistico")
+st.write("Configura l'intestazione direttamente qui sotto e scarica la bolletta premium finita con un solo click.")
 
-    # Se l'utente cambia gestore dal menù a tendina, azzeriamo lo stato per forzare una nuova generazione
-    if st.session_state.ultimo_gestore != gestore_scelto:
-        st.session_state.pdf_pronto = False
-        st.session_state.ultimo_gestore = gestore_scelto
+col_p1, col_p2, col_p3 = st.columns(3)
+with col_p1:
+    gestore_scelto = st.selectbox("1. Scegli il Gestore per il PDF:", [g["nome"] for g in st.session_state.gestori])
+with col_p2:
+    nome_cliente = st.text_input("2. Nome e Cognome Cliente", value="Cliente Simulazione")
+with col_p3:
+    codice_pod = st.text_input("3. Codice POD Contatore", value="IT001E12345678")
 
-    # TASTO GENERAZIONE (Richiesto dall'utente)
-    if st.button("📄 Genera PDF Fac-Simile", type="primary"):
-        dati_pdf = mappa_risultati[gestore_scelto]
-        colore_brand = colors.HexColor(dati_pdf["colore"])
-        colore_testo_header = colors.white if dati_pdf["gestore"] != "Eni Plenitude" else colors.HexColor("#1A1A1A")
-        
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
-        elementi = []
-        stili = getSampleStyleSheet()
-        
-        # Stili
-        stile_brand = ParagraphStyle('Brand', parent=stili['Normal'], fontSize=24, fontName='Helvetica-Bold', textColor=colore_testo_header)
-        stile_sezione = ParagraphStyle('Sez', parent=stili['Normal'], fontSize=11, fontName='Helvetica-Bold', textColor=colore_brand, spaceBefore=15, spaceAfter=8)
-        stile_testo = ParagraphStyle('Testo', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.HexColor('#333333'))
-        stile_testo_bianco = ParagraphStyle('TestoB', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.white)
-        stile_totale_num = ParagraphStyle('TotNum', parent=stili['Normal'], fontSize=22, fontName='Helvetica-Bold', textColor=colors.HexColor('#1A1A1A'), alignment=1)
-        stile_totale_lbl = ParagraphStyle('TotLbl', parent=stili['Normal'], fontSize=9, textColor=colors.HexColor('#555555'), alignment=1)
-        
-        # Header
+# FUNZIONE MOTORE DI GENERAZIONE AUTOMATICA PDF
+def genera_documento_pdf():
+    dati_pdf = mappa_risultati[gestore_scelto]
+    colore_brand = colors.HexColor(dati_pdf["colore"])
+    colore_testo_header = colors.white if dati_pdf["gestore"] != "Eni Plenitude" else colors.HexColor("#1A1A1A")
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    elementi = []
+    stili = getSampleStyleSheet()
+    
+    stile_brand = ParagraphStyle('Brand', parent=stili['Normal'], fontSize=24, fontName='Helvetica-Bold', textColor=colore_testo_header)
+    stile_sezione = ParagraphStyle('Sez', parent=stili['Normal'], fontSize=11, fontName='Helvetica-Bold', textColor=colore_brand, spaceBefore=15, spaceAfter=8)
+    stile_testo = ParagraphStyle('Testo', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.HexColor('#333333'))
+    stile_testo_bianco = ParagraphStyle('TestoB', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.white)
+    stile_totale_num = ParagraphStyle('TotNum', parent=stili['Normal'], fontSize=22, fontName='Helvetica-Bold', textColor=colors.HexColor('#1A1A1A'), alignment=1)
+    stile_totale_lbl = ParagraphStyle('TotLbl', parent=stili['Normal'], fontSize=9, textColor=colors.HexColor('#555555'), alignment=1)
+    
+    header_data = [[Paragraph(f" {dati_pdf['gestore'].upper()} ENERGIA", stile_brand), Paragraph("<b>FORNITURA LUCE</b><br/>Mercato Libero", ParagraphStyle('HRight', parent=stili['Normal'], alignment=2, textColor=colore_testo_header, fontSize=10))]]
+    t_header = Table(header_data, colWidths=(380, 160))
+    s_header = TableStyle()
+    s_header.add('BACKGROUND', (0,0), (-1,-1), colore_brand)
+    s_header.add('PADDING', (0,0), (-1,-1), 16)
+    s_header.add('VALIGN', (0,0), (-1,-1), 'MIDDLE')
+    t_header.setStyle(s_header)
+    elementi.append(t_header)
+    elementi.append(Spacer(1, 15))
+    
+    box_totale_data = [
