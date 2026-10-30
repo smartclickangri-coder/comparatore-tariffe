@@ -8,7 +8,7 @@ import io
 # Configurazione della pagina web
 st.set_page_config(page_title="Comparatore Bollette AI Professionale", layout="wide")
 st.title("📊 Calcolatore Energetico e Generatore Fac-Simile PDF Premium")
-st.write("Inserisci i dati, confronta le tariffe e scarica il fac-simile della bolletta ad alto impatto grafico per il cliente.")
+st.write("Inserisci i dati, confronta le tariffe e scarica direttamente il fac-simile della bolletta in formato PDF.")
 
 # 1. PARAMETRI REALI DALLA BOLLETTA
 st.header("1. Riferimenti Economici della Bolletta Sotto Esame")
@@ -68,7 +68,7 @@ attiva_bonus = st.checkbox("Il cliente ha diritto al Bonus Sociale?")
 bonus_mensile = 0.0
 if attiva_bonus:
     categoria_bonus = st.radio(
-        "Seleziona la畤 numerosità del nucleo familiare:",
+        "Seleziona la numerosità del nucleo familiare:",
         ("Nucleo 1-2 componenti (~11,70 €/mese)", "Nucleo 3-4 componenti (~14,30 €/mese)", "Nucleo >4 componenti (~16,10 €/mese)")
     )
     bonus_mensile = 11.70 if "1-2" in categoria_bonus else (14.30 if "3-4" in categoria_bonus else 16.10)
@@ -135,39 +135,39 @@ for g in st.session_state.gestori:
 st.header("3. Risultati del Confronto a Schermo")
 st.table(sorted(risultati_schermo, key=lambda x: x["TOTALE FINITO (€)"]))
 
-# 4. PANNELLO LATERALE GENERAZIONE PDF PREMIUM BRANDIZZATO
+# 4. PANNELLO LATERALE GENERAZIONE E ADESSO SCARICAMENTO DIRETTO
 with st.sidebar:
     st.header("🖨️ Stampa Fac-Simile Realistico")
-    st.write("Genera una simulazione con la palette colori ufficiale e il layout a blocchi identico alle bollette reali.")
+    st.write("Seleziona il fornitore e scarica direttamente la bolletta premium personalizzata.")
     
     gestore_scelto = st.selectbox("Seleziona il Gestore per il PDF:", [g["nome"] for g in st.session_state.gestori])
-    
     nome_cliente = st.text_input("Nome e Cognome Cliente (Opzionale)", value="Cliente Simulazione")
     codice_pod = st.text_input("Codice POD Contatore (Opzionale)", value="IT001E12345678")
     
-    if st.button("📄 Genera PDF Premium Brandizzato"):
-        dati_pdf = mappa_risultati[gestore_scelto]
-        colore_brand = colors.HexColor(dati_pdf["colore"])
-        colore_testo_header = colors.white if dati_pdf["gestore"] != "Eni Plenitude" else colors.HexColor("#1A1A1A")
-        
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
-        elementi = []
-        
-        stili = getSampleStyleSheet()
-        
-        # Stili Tipografici Custom
-        stile_brand = ParagraphStyle('Brand', parent=stili['Normal'], fontSize=24, fontName='Helvetica-Bold', textColor=colore_testo_header)
-        stile_sezione = ParagraphStyle('Sez', parent=stili['Normal'], fontSize=11, fontName='Helvetica-Bold', textColor=colore_brand, spaceBefore=15, spaceAfter=8)
-        stile_testo = ParagraphStyle('Testo', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.HexColor('#333333'))
-        stile_testo_bianco = ParagraphStyle('TestoB', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.white)
-        stile_totale_num = ParagraphStyle('TotNum', parent=stili['Normal'], fontSize=22, fontName='Helvetica-Bold', textColor=colors.HexColor('#1A1A1A'), alignment=1)
-        stile_totale_lbl = ParagraphStyle('TotLbl', parent=stili['Normal'], fontSize=9, textColor=colors.HexColor('#555555'), alignment=1)
-        
-        # --- HEADER BRANDIZZATO ---
-        header_data = [[Paragraph(f" {dati_pdf['gestore'].upper()} ENERGIA", stile_brand), Paragraph("<b>FORNITURA LUCE</b><br/>Mercato Libero", ParagraphStyle('HRight', parent=stili['Normal'], alignment=2, textColor=colore_testo_header, fontSize=10))]]
-        t_header = Table(header_data, colWidths=(380, 160))
-        
-        # Stile applicato in comandi separati puliti per evitare conflitti con la chat
-        stile_t_header = TableStyle()
-        stile_t_header.add('BACKGROUND', (0,0), (-1,-1), colore_brand)
+    # Generazione immediata in background ad ogni modifica dei dati
+    dati_pdf = mappa_risultati[gestore_scelto]
+    colore_brand = colors.HexColor(dati_pdf["colore"])
+    colore_testo_header = colors.white if dati_pdf["gestore"] != "Eni Plenitude" else colors.HexColor("#1A1A1A")
+    
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    elementi = []
+    stili = getSampleStyleSheet()
+    
+    # Stili
+    stile_brand = ParagraphStyle('Brand', parent=stili['Normal'], fontSize=24, fontName='Helvetica-Bold', textColor=colore_testo_header)
+    stile_sezione = ParagraphStyle('Sez', parent=stili['Normal'], fontSize=11, fontName='Helvetica-Bold', textColor=colore_brand, spaceBefore=15, spaceAfter=8)
+    stile_testo = ParagraphStyle('Testo', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.HexColor('#333333'))
+    stile_testo_bianco = ParagraphStyle('TestoB', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.white)
+    stile_totale_num = ParagraphStyle('TotNum', parent=stili['Normal'], fontSize=22, fontName='Helvetica-Bold', textColor=colors.HexColor('#1A1A1A'), alignment=1)
+    stile_totale_lbl = ParagraphStyle('TotLbl', parent=stili['Normal'], fontSize=9, textColor=colors.HexColor('#555555'), alignment=1)
+    
+    # Header
+    header_data = [[Paragraph(f" {dati_pdf['gestore'].upper()} ENERGIA", stile_brand), Paragraph("<b>FORNITURA LUCE</b><br/>Mercato Libero", ParagraphStyle('HRight', parent=stili['Normal'], alignment=2, textColor=colore_testo_header, fontSize=10))]]
+    t_header = Table(header_data, colWidths=(380, 160))
+    s_header = TableStyle()
+    s_header.add('BACKGROUND', (0,0), (-1,-1), colore_brand)
+    s_header.add('PADDING', (0,0), (-1,-1), 16)
+    s_header.add('VALIGN', (0,0), (-1,-1), 'MIDDLE')
+    t_header.setStyle(s_header)
+    elementi.append(t_header)
