@@ -68,7 +68,7 @@ attiva_bonus = st.checkbox("Il cliente ha diritto al Bonus Sociale?")
 bonus_mensile = 0.0
 if attiva_bonus:
     categoria_bonus = st.radio(
-        "Seleziona la numerosità del nucleo familiare:",
+        "Seleziona la畤 numerosità del nucleo familiare:",
         ("Nucleo 1-2 componenti (~11,70 €/mese)", "Nucleo 3-4 componenti (~14,30 €/mese)", "Nucleo >4 componenti (~16,10 €/mese)")
     )
     bonus_mensile = 11.70 if "1-2" in categoria_bonus else (14.30 if "3-4" in categoria_bonus else 16.10)
@@ -167,6 +167,7 @@ with st.sidebar:
         # --- HEADER BRANDIZZATO ---
         header_data = [[Paragraph(f" {dati_pdf['gestore'].upper()} ENERGIA", stile_brand), Paragraph("<b>FORNITURA LUCE</b><br/>Mercato Libero", ParagraphStyle('HRight', parent=stili['Normal'], alignment=2, textColor=colore_testo_header, fontSize=10))]]
         t_header = Table(header_data, colWidths=(380, 160))
-        t_header.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), colore_brand),
-            ('PADDING', (0,0), (-1,-1), 16),
+        
+        # Stile applicato in comandi separati puliti per evitare conflitti con la chat
+        stile_t_header = TableStyle()
+        stile_t_header.add('BACKGROUND', (0,0), (-1,-1), colore_brand)
