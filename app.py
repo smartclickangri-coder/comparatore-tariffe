@@ -105,7 +105,7 @@ for g in st.session_state.gestori:
         prezzo_medio_vis = pun_medio_pesato + corr_consumo_windtre
     else:
         prezzo_materia_unico = g["luce_fisso"] if g["luce_fisso"] > 0 else (pun_medio_pesato + g["spread_luce"])
-        spesa_materia_pura = consumption_total = consumo_totale * prezzo_materia_unico
+        spesa_materia_pura = consumo_totale * prezzo_materia_unico
         prezzo_medio_vis = prezzo_materia_unico
         
     spesa_dispacciamento = consumo_totale * dispacciamento_bolletta
@@ -148,7 +148,7 @@ with st.sidebar:
     if st.button("📄 Genera PDF Premium Brandizzato"):
         dati_pdf = mappa_risultati[gestore_scelto]
         colore_brand = colors.HexColor(dati_pdf["colore"])
-        colore_testo_header = colors.white if dati_pdf["nome"] != "Eni Plenitude" else colors.HexColor("#1A1A1A")
+        colore_testo_header = colors.white if dati_pdf["gestore"] != "Eni Plenitude" else colors.HexColor("#1A1A1A")
         
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
@@ -170,5 +170,3 @@ with st.sidebar:
         t_header.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,-1), colore_brand),
             ('PADDING', (0,0), (-1,-1), 16),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE')
-        ]))
