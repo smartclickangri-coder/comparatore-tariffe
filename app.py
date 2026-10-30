@@ -1,6 +1,6 @@
 import streamlit as st
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import io
@@ -131,13 +131,13 @@ for g in st.session_state.gestori:
         "TOTALE FINITO (€)": round(totale_finito, 2)
     })
 
-# 3. TABELLA DI CONFRONTO WEB (PAGINA PRINCIPALE)
+# 3. TABELLA DI CONFRONTO WEB
 st.header("3. Risultati del Confronto a Schermo")
 st.table(sorted(risultati_schermo, key=lambda x: x["TOTALE FINITO (€)"]))
 
-# 4. NUOVA SEZIONE CENTRALE UNICA PER COSTRUZIONE E SCARICAMENTO IMMEDIATO PDF
+# 4. CENTRALE DI STAMPA EDITORIALE SENZA TABELLE A RISCHIO TAGLIO
 st.header("🖨️ Centro Stampa Fac-Simile Realistico")
-st.write("Configura l'intestazione direttamente qui sotto e scarica la bolletta premium finita con un solo click.")
+st.write("Configura i dati anagrafici e scarica direttamente la bolletta premium finita con un solo click.")
 
 col_p1, col_p2, col_p3 = st.columns(3)
 with col_p1:
@@ -147,32 +147,32 @@ with col_p2:
 with col_p3:
     codice_pod = st.text_input("3. Codice POD Contatore", value="IT001E12345678")
 
-# FUNZIONE MOTORE DI GENERAZIONE AUTOMATICA PDF
-def genera_documento_pdf():
+def genera_documento_pdf_sicuro():
     dati_pdf = mappa_risultati[gestore_scelto]
     colore_brand = colors.HexColor(dati_pdf["colore"])
-    colore_testo_header = colors.white if dati_pdf["gestore"] != "Eni Plenitude" else colors.HexColor("#1A1A1A")
     
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=45, leftMargin=45, topMargin=45, bottomMargin=45)
     elementi = []
     stili = getSampleStyleSheet()
     
-    stile_brand = ParagraphStyle('Brand', parent=stili['Normal'], fontSize=24, fontName='Helvetica-Bold', textColor=colore_testo_header)
-    stile_sezione = ParagraphStyle('Sez', parent=stili['Normal'], fontSize=11, fontName='Helvetica-Bold', textColor=colore_brand, spaceBefore=15, spaceAfter=8)
-    stile_testo = ParagraphStyle('Testo', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.HexColor('#333333'))
-    stile_testo_bianco = ParagraphStyle('TestoB', parent=stili['Normal'], fontSize=9, leading=13, textColor=colors.white)
-    stile_totale_num = ParagraphStyle('TotNum', parent=stili['Normal'], fontSize=22, fontName='Helvetica-Bold', textColor=colors.HexColor('#1A1A1A'), alignment=1)
-    stile_totale_lbl = ParagraphStyle('TotLbl', parent=stili['Normal'], fontSize=9, textColor=colors.HexColor('#555555'), alignment=1)
+    # Stili editoriali continui sicuri per la chat
+    stile_marca = ParagraphStyle('Marca', fontSize=24, fontName='Helvetica-Bold', textColor=colore_brand, spaceAfter=5)
+    stile_h1 = ParagraphStyle('H1', fontSize=14, fontName='Helvetica-Bold', textColor=colors.HexColor('#1A1A1A'), spaceBefore=15, spaceAfter=10)
+    stile_corpo = ParagraphStyle('Corpo', fontSize=10, leading=15, textColor=colors.HexColor('#333333'), spaceAfter=6)
+    stile_evidenziato = ParagraphStyle('Evid', fontSize=16, leading=20, textColor=colore_brand, fontName='Helvetica-Bold', spaceBefore=10, spaceAfter=15)
     
-    header_data = [[Paragraph(f" {dati_pdf['gestore'].upper()} ENERGIA", stile_brand), Paragraph("<b>FORNITURA LUCE</b><br/>Mercato Libero", ParagraphStyle('HRight', parent=stili['Normal'], alignment=2, textColor=colore_testo_header, fontSize=10))]]
-    t_header = Table(header_data, colWidths=(380, 160))
-    s_header = TableStyle()
-    s_header.add('BACKGROUND', (0,0), (-1,-1), colore_brand)
-    s_header.add('PADDING', (0,0), (-1,-1), 16)
-    s_header.add('VALIGN', (0,0), (-1,-1), 'MIDDLE')
-    t_header.setStyle(s_header)
-    elementi.append(t_header)
+    # Intestazione e Dati Fornitura
+    elementi.append(Paragraph(f"FORNITURA ENERGIA ELETTRICA: {dati_pdf['gestore'].upper()}", stile_marca))
+    elementi.append(Paragraph("<b>Mercato Libero dell'Energia</b> - Documento di Proiezione Fac-Simile", stile_corpo))
     elementi.append(Spacer(1, 15))
     
-    box_totale_data = [
+    elementi.append(Paragraph("DATI TECNICI DI FORNITURA", stile_h1))
+    elementi.append(Paragraph(f"• <b>Intestatario:</b> {nome_cliente}", stile_corpo))
+    elementi.append(Paragraph(f"• <b>Codice POD Contatore:</b> {codice_pod}", stile_corpo))
+    elementi.append(Paragraph(f"• <b>Potenza Contrattuale:</b> {potenza} kW", stile_corpo))
+    elementi.append(Paragraph(f"• <b>Tipologia Utenza:</b> Domestico " + ("Residente" if is_residente else "Non Residente"), stile_corpo))
+    elementi.append(Paragraph(f"• <b>Periodo di Fatturazione Calcolato:</b> {mesi} Mese/i", stile_corpo))
+    elementi.append(Paragraph(f"• <b>Struttura Tariffaria:</b> {dati_pdf['tipo']} (Prezzo di riferimento: {round(dati_pdf['prezzo_medio'], 4)} €/kWh)", stile_corpo))
+    
+    # Quadro Economico Continuo
